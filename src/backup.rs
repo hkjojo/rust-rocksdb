@@ -14,7 +14,9 @@
 //
 
 use crate::env::Env;
-use crate::{db::DBInner, ffi, ffi_util::to_cpath, DBCommon, Error, ThreadMode};
+use crate::{
+    db::DBInner, ffi, ffi_util::to_cpath, transactions::TransactionDB, DBCommon, Error, ThreadMode,
+};
 
 use libc::c_uchar;
 use std::ffi::CString;
@@ -97,6 +99,25 @@ impl BackupEngine {
             ffi_try!(ffi::rocksdb_backup_engine_create_new_backup_flush(
                 self.inner,
                 db.inner.inner(),
+                c_uchar::from(flush_before_backup),
+            ));
+            Ok(())
+        }
+    }
+
+    /// Captures the state of the database in the latest backup.
+    ///
+    /// Set flush_before_backup=true to avoid losing unflushed key/value
+    /// pairs from the memtable.
+    pub fn create_new_backup_flush_transaction_db<T: ThreadMode>(
+        &mut self,
+        db: &TransactionDB<T>,
+        flush_before_backup: bool,
+    ) -> Result<(), Error> {
+        unsafe {
+            ffi_try!(ffi::rocksdb_backup_engine_create_new_backup_flush(
+                self.inner,
+                ffi::rocksdb_transactiondb_get_base_db(db.inner),
                 c_uchar::from(flush_before_backup),
             ));
             Ok(())
