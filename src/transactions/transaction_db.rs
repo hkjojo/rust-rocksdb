@@ -1099,6 +1099,42 @@ impl TransactionDB<MultiThreaded> {
             Self::parse_property_int_value,
         )
     }
+
+    pub fn property_value_cf(
+        &self,
+        cf: &impl AsColumnFamilyRef,
+        name: impl CStrLike,
+    ) -> Result<Option<String>, Error> {
+        Self::property_value_impl(
+            name,
+            |prop_name| unsafe {
+                ffi::rocksdb_property_value_cf(
+                    ffi::rocksdb_transactiondb_get_base_db(self.inner),
+                    cf.inner(),
+                    prop_name,
+                )
+            },
+            |str_value| Ok(str_value.to_owned()),
+        )
+    }
+
+    pub fn property_int_value_cf(
+        &self,
+        cf: &impl AsColumnFamilyRef,
+        name: impl CStrLike,
+    ) -> Result<Option<u64>, Error> {
+        Self::property_value_impl(
+            name,
+            |prop_name| unsafe {
+                ffi::rocksdb_property_value_cf(
+                    ffi::rocksdb_transactiondb_get_base_db(self.inner),
+                    cf.inner(),
+                    prop_name,
+                )
+            },
+            Self::parse_property_int_value,
+        )
+    }
 }
 
 impl<T: ThreadMode> Drop for TransactionDB<T> {
